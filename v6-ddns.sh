@@ -15,7 +15,7 @@ discorduri=""                                       # URI for Discord WebHook "h
 
 
 ###########################################
-## Check if we have a public IP
+## Get IPv6 IP
 ###########################################
 ip=$(ip addr show dev $interface | sed -e's/^.*inet6 \([^ ]*\)\/.*$/\1/;t;d' | grep -v '^fd00' | grep -v '^fe80' | head -1)
 
