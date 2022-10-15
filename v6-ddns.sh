@@ -1,5 +1,4 @@
 #!/bin/bash
-## change to "bin/sh" when necessary
 
 interface=""                                        # Local interface where IPv6-address is, eg. "eth0"
 auth_email=""                                       # The email used to login 'https://dash.cloudflare.com'
