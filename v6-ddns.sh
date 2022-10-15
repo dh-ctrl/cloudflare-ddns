@@ -1,37 +1,24 @@
 #!/bin/bash
+## change to "bin/sh" when necessary
 
-
-auth_email=""                                        # The email used to login 'https://dash.cloudflare.com'
-auth_method="token"                                  # Set to "global" for Global API Key or "token" for Scoped API Token
-auth_key=""                                          # Your API Token or Global API Key
-zone_identifier=""                                   # Can be found in the "Overview" tab of your domain
-record_name=""                                       # Which record you want to be synced
-ttl="3600"                                           # Set the DNS TTL (seconds)
-proxy="false"                                        # Set the proxy to true or false
-sitename=""                                          # Title of site "Example Site"
-slackchannel=""                                      # Slack Channel #example
-slackuri=""                                          # URI for Slack WebHook "https://hooks.slack.com/services/xxxxx"
-discorduri=""                                        # URI for Discord WebHook "https://discordapp.com/api/webhooks/xxxxx"
+interface=""                                        # Local interface where IPv6-address is, eg. "eth0"
+auth_email=""                                       # The email used to login 'https://dash.cloudflare.com'
+auth_method="token"                                 # Set to "global" for Global API Key or "token" for Scoped API Token
+auth_key=""                                         # Your API Token or Global API Key
+zone_identifier=""                                  # Can be found in the "Overview" tab of your domain
+record_name=""                                      # Which record you want to be synced
+ttl="3600"                                          # Set the DNS TTL (seconds)
+proxy="false"                                       # Set the proxy to true or false
+sitename=""                                         # Title of site "Example Site"
+slackchannel=""                                     # Slack Channel #example
+slackuri=""                                         # URI for Slack WebHook "https://hooks.slack.com/services/xxxxx"
+discorduri=""                                       # URI for Discord WebHook "https://discordapp.com/api/webhooks/xxxxx"
 
 
 ###########################################
 ## Check if we have a public IP
 ###########################################
-ipv4_regex='([01]?[0-9]?[0-9]|2[0-4][0-9]|25[0-5])\.([01]?[0-9]?[0-9]|2[0-4][0-9]|25[0-5])\.([01]?[0-9]?[0-9]|2[0-4][0-9]|25[0-5])\.([01]?[0-9]?[0-9]|2[0-4][0-9]|25[0-5])'
-ip=$(curl -s -4 https://cloudflare.com/cdn-cgi/trace | grep -E '^ip'); ret=$?
-if [[ ! $ret == 0 ]]; then # In the case that cloudflare failed to return an ip.
-    # Attempt to get the ip from other websites.
-    ip=$(curl -s https://api.ipify.org || curl -s https://ipv4.icanhazip.com)
-else
-    # Extract just the ip from the ip line from cloudflare.
-    ip=$(echo $ip | sed -E "s/^ip=($ipv4_regex)$/\1/")
-fi
-
-# Use regex to check for proper IPv4 format.
-if [[ ! $ip =~ ^$ipv4_regex$ ]]; then
-    logger -s "DDNS Updater: Failed to find a valid IP."
-    exit 2
-fi
+ip=$(ip addr show dev $interface | sed -e's/^.*inet6 \([^ ]*\)\/.*$/\1/;t;d' | grep -v '^fd00' | grep -v '^fe80' | head -1)
 
 ###########################################
 ## Check and set the proper auth header
@@ -43,17 +30,17 @@ else
 fi
 
 ###########################################
-## Seek for the A record
+## Seek for the AAAA record
 ###########################################
 
 logger "DDNS Updater: Check Initiated"
-record=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/$zone_identifier/dns_records?type=A&name=$record_name" \
+record=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/$zone_identifier/dns_records?type=AAAA&name=$record_name" \
                       -H "X-Auth-Email: $auth_email" \
                       -H "$auth_header $auth_key" \
                       -H "Content-Type: application/json")
 
 ###########################################
-## Check if the domain has an A record
+## Check if the domain has an AAAA record
 ###########################################
 if [[ $record == *"\"count\":0"* ]]; then
   logger -s "DDNS Updater: Record does not exist, perhaps create one first? (${ip} for ${record_name})"
@@ -82,7 +69,7 @@ update=$(curl -s -X PATCH "https://api.cloudflare.com/client/v4/zones/$zone_iden
                      -H "X-Auth-Email: $auth_email" \
                      -H "$auth_header $auth_key" \
                      -H "Content-Type: application/json" \
-                     --data "{\"type\":\"A\",\"name\":\"$record_name\",\"content\":\"$ip\",\"ttl\":\"$ttl\",\"proxied\":${proxy}}")
+                     --data "{\"type\":\"AAAA\",\"name\":\"$record_name\",\"content\":\"$ip\",\"ttl\":\"$ttl\",\"proxied\":${proxy}}")
 
 ###########################################
 ## Report the status
